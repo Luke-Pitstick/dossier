@@ -6,6 +6,7 @@ import { Switch } from "radix-ui";
 import { useEffect, useId, useOptimistic, useRef, useState, useTransition, type ReactNode } from "react";
 
 import { plainUnit, type UnitRenderer } from "@/components/documents/document-page";
+import { PdfPreview } from "@/components/documents/pdf-preview";
 import { DocumentPreview } from "@/components/documents/document-preview";
 import { DownloadPdfButton } from "@/components/documents/download-pdf-button";
 import { TailoredLetter, TailoredResume } from "@/components/documents/tailored-documents";
@@ -97,6 +98,8 @@ const NO_AI = "That needs an AI provider. Choose one in Settings → AI provider
 const NOTHING_SAVING: Readonly<Record<string, string>> = {};
 
 export type ApplicationViewProps = {
+  resumeRenderer?: "html" | "latex";
+  resumeMaxPages?: number | null;
   application: {
     id: string;
     title: string;
@@ -176,6 +179,8 @@ export function ApplicationView({
   facts: factsAtLoad,
   activity,
   resume,
+  resumeRenderer = "html",
+  resumeMaxPages,
   letter,
   themes,
   baseThemeId,
@@ -659,6 +664,9 @@ export function ApplicationView({
       <div className="@container flex min-h-0 flex-1 flex-wrap @min-[780px]/page:flex-nowrap">
         <TabsContent value="resume" className="flex min-h-0 min-w-0 flex-[999_1_480px]">
           {resume && resumeTheme && resumeUnits ? (
+            <div className="flex min-w-0 flex-1 flex-col overflow-auto">
+            {resumeRenderer === "latex" && <PdfPreview document={{ kind: "resume", applicationId: application.id, units: viewed(DocumentKind.RESUME)?.units ?? resumeUnits, versionId: viewed(DocumentKind.RESUME)?.id, showPhoto: photoChoice }} maxPages={resumeMaxPages} revision={JSON.stringify([profile, paper, application.language, includeReferences])} />}
+            {resumeRenderer === "latex" && <p className="bg-canvas px-10 pt-3 text-meta text-muted">Content editor · Edit sections and review history below. Downloads use the saved current resume.</p>}
             <DocumentPreview
               meta={viewed(DocumentKind.RESUME) ? undefined : hint}
               notice={
@@ -670,8 +678,8 @@ export function ApplicationView({
               }
               label={
                 <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                  <span className="flex items-center gap-1">Tailored resume · {themeMenu(resumeTheme)}</span>
-                  {hasSidebar(resumeTheme.layout) && (
+                  <span className="flex items-center gap-1">{resumeRenderer === "latex" ? "Content editor" : <>Tailored resume · {themeMenu(resumeTheme)}</>}</span>
+                  {resumeRenderer !== "latex" && hasSidebar(resumeTheme.layout) && (
                     <PreviewSwitch label="Sidebar layout" checked={followLayout} onCheckedChange={changeLayout} />
                   )}
                   {profile.photo && <PreviewSwitch label="Photo" checked={showPhoto} onCheckedChange={changePhoto} />}
@@ -690,6 +698,7 @@ export function ApplicationView({
                 renderUnit={viewed(DocumentKind.RESUME) ? plainUnit : unitsOf(DocumentKind.RESUME, resumeUnits)}
               />
             </DocumentPreview>
+            </div>
           ) : (
             <MissingDocument>This application has no tailored resume.</MissingDocument>
           )}

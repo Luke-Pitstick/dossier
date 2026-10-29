@@ -180,6 +180,7 @@ export const updateSettings = action(
     creativity: z.enum(Creativity).optional(),
     strict: z.boolean().optional(),
     showDiff: z.boolean().optional(),
+    resumeRenderer: z.enum(["html", "latex"]).optional(),
     paper: z.enum(PaperSize).optional(),
     dateFormat: z.enum(DateFormat).optional(),
     defaultTone: z.enum(Tone).optional(),

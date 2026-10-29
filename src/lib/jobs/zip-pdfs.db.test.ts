@@ -5,7 +5,7 @@ import path from "node:path";
 import { unzipSync } from "fflate";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { renderPdf } from "@/lib/pdf/render";
+import { renderDocumentPdf } from "@/lib/pdf/document";
 import { createTestClient, resetDatabase } from "@/test/db";
 
 import { countTailoredDocuments, zipPdfsJob } from "./zip-pdfs";
@@ -18,7 +18,7 @@ vi.mock("@/lib/prisma", async () => {
 });
 const dataDir = vi.hoisted(() => ({ path: "" }));
 vi.mock("@/lib/env", () => ({ env: { get DOSSIER_DATA_DIR() { return dataDir.path; } } }));
-vi.mock("@/lib/pdf/render", () => ({ renderPdf: vi.fn(async (page: string) => new TextEncoder().encode(`%PDF ${page}`)) }));
+vi.mock("@/lib/pdf/document", () => ({ renderDocumentPdf: vi.fn(async (doc: { kind: string; applicationId: string }) => new TextEncoder().encode(`%PDF /print/${doc.kind}/${doc.applicationId}`)) }));
 vi.mock("@/lib/profile-data", () => ({ loadProfileName: async () => "Jane Doe" }));
 vi.mock("./runner", () => ({ defineJob: <T,>(definition: T) => definition }));
 
@@ -29,7 +29,7 @@ const context = { id: "test-job", step: async (name: string) => void steps.push(
 beforeEach(async () => {
   dataDir.path = await mkdtemp(path.join(tmpdir(), "dossier-zip-"));
   steps.length = 0;
-  vi.mocked(renderPdf).mockClear();
+  vi.mocked(renderDocumentPdf).mockClear();
   await resetDatabase(prisma());
   const both = { create: [{ kind: "RESUME" as const, units: [] }, { kind: "COVER_LETTER" as const, units: [] }] };
   await prisma().application.create({ data: { id: "a1", company: "Ledgerly", role: "Designer", documents: both } });
@@ -49,8 +49,8 @@ describe("zipPdfsJob (E10-5)", () => {
   it("zips every tailored document into a folder per company", async () => {
     const result = await zipPdfsJob.run({}, context);
     expect(result).toMatchObject({ documents: 5, fileName: expect.stringMatching(/^dossier-pdfs-\d{4}-\d{2}-\d{2}\.zip$/) });
-    expect(renderPdf).toHaveBeenCalledWith("/print/resume/a1");
-    expect(renderPdf).toHaveBeenCalledWith("/print/letter/a3");
+    expect(renderDocumentPdf).toHaveBeenCalledWith({ kind: "resume", applicationId: "a1" }, undefined, context.signal);
+    expect(renderDocumentPdf).toHaveBeenCalledWith({ kind: "letter", applicationId: "a3" }, undefined, context.signal);
 
     const zip = unzipSync(await readFile(path.join(dataDir.path, "downloads", result.file)));
     expect(Object.keys(zip).sort()).toEqual([

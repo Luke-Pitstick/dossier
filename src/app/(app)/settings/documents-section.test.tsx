@@ -14,6 +14,7 @@ vi.mock("./actions", () => ({
 vi.mock("@/components/toast", () => ({ toast: vi.fn(), toastResult: (result: unknown) => result }));
 
 const initial: DocumentSettings = {
+  resumeRenderer: "html",
   paper: "A4",
   dateFormat: "DAY_MONTH_YEAR",
   defaultTone: "WARM",

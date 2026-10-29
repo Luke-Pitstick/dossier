@@ -15,6 +15,7 @@ import { googleConnection } from "@/lib/google/account";
 import { pullInterviewEvents } from "@/lib/google/availability";
 import { loadConversation } from "@/lib/google/inbox-data";
 import { refineSuggestions } from "@/lib/refine-suggestions";
+import { maxPages } from "@/lib/settings";
 import { loadThemes } from "@/lib/theme-data";
 import { userTimeZone } from "@/lib/time-zone";
 
@@ -128,6 +129,8 @@ export default async function ApplicationPage({ params, searchParams }: PageProp
             }
       }
       profile={profile}
+      resumeRenderer={settings.resumeRenderer}
+      resumeMaxPages={maxPages(settings.pageLimit)}
       paper={settings.paper}
       dateFormat={settings.dateFormat}
       includeReferences={includeReferences}

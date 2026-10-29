@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getSession } from "@/lib/auth/session";
-import { renderPdf } from "@/lib/pdf/render";
+import { renderDocumentPdf } from "@/lib/pdf/document";
 import { prisma } from "@/lib/prisma";
 import { loadProfileName } from "@/lib/profile-data";
 import { settingsFromRows } from "@/lib/settings";
@@ -12,7 +12,7 @@ import { GET as GET_HELD } from "./[id]/route";
 import { GET, POST } from "./route";
 
 vi.mock("@/lib/auth/session", () => ({ getSession: vi.fn() }));
-vi.mock("@/lib/pdf/render", () => ({ renderPdf: vi.fn() }));
+vi.mock("@/lib/pdf/document", () => ({ renderDocumentPdf: vi.fn() }));
 vi.mock("@/lib/profile-data", () => ({ loadProfileName: vi.fn() }));
 vi.mock("@/lib/settings-data", () => ({ loadSettings: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({ prisma: { application: { findUnique: vi.fn() } } }));
@@ -30,11 +30,11 @@ const getHeld = (url: string) => {
 
 beforeEach(() => {
   vi.mocked(getSession).mockResolvedValue({ persistent: false, issuedAt: new Date(), expiresAt: new Date() });
-  vi.mocked(renderPdf).mockResolvedValue(new Uint8Array([37, 80, 68, 70]));
+  vi.mocked(renderDocumentPdf).mockResolvedValue(new Uint8Array([37, 80, 68, 70]));
   vi.mocked(loadProfileName).mockResolvedValue("Jane Doe");
   // The defaults, with the pattern "{name} – {company} – {doc}".
   vi.mocked(loadSettings).mockResolvedValue(settingsFromRows([]));
-  vi.mocked(renderPdf).mockClear();
+  vi.mocked(renderDocumentPdf).mockClear();
   // An application with both documents.
   vi.mocked(prisma.application.findUnique).mockReset().mockResolvedValue({
     company: "Ledgerly",
@@ -47,7 +47,7 @@ describe("GET /api/pdf", () => {
   it("downloads the base resume, named by the file-name pattern (RES-5, SET-8)", async () => {
     const response = await get("?doc=base");
     expect(response.status).toBe(200);
-    expect(renderPdf).toHaveBeenCalledWith("/print/base");
+    expect(renderDocumentPdf).toHaveBeenCalledWith({ kind: "base" });
     expect(response.headers.get("content-type")).toBe("application/pdf");
     expect(response.headers.get("content-disposition")).toBe(
       "attachment; filename=\"Jane Doe - Resume.pdf\"; filename*=UTF-8''Jane%20Doe%20%E2%80%93%20Resume.pdf",
@@ -59,7 +59,7 @@ describe("GET /api/pdf", () => {
   it("answers 404 for documents it doesn't know", async () => {
     expect((await get("?doc=resume:abc")).status).toBe(404);
     expect((await get("")).status).toBe(404);
-    expect(renderPdf).not.toHaveBeenCalled();
+    expect(renderDocumentPdf).not.toHaveBeenCalled();
   });
 
   it("needs a session", async () => {
@@ -68,7 +68,7 @@ describe("GET /api/pdf", () => {
   });
 
   it("turns a failed render into a friendly 500", async () => {
-    vi.mocked(renderPdf).mockRejectedValue(new Error("Chromium crashed"));
+    vi.mocked(renderDocumentPdf).mockRejectedValue(new Error("Chromium crashed"));
     vi.spyOn(console, "error").mockImplementation(() => {});
     const response = await get("?doc=base");
     expect(response.status).toBe(500);
@@ -77,11 +77,11 @@ describe("GET /api/pdf", () => {
 
   it("downloads an application's tailored resume and cover letter (APP-12)", async () => {
     const resume = await get("?doc=resume&application=app1");
-    expect(renderPdf).toHaveBeenLastCalledWith("/print/resume/app1");
+    expect(renderDocumentPdf).toHaveBeenLastCalledWith({ kind: "resume", applicationId: "app1" });
     expect(resume.headers.get("content-disposition")).toContain("filename*=UTF-8''Jane%20Doe%20%E2%80%93%20Ledgerly%20%E2%80%93%20Resume.pdf");
 
     const letter = await get("?doc=letter&application=app1");
-    expect(renderPdf).toHaveBeenLastCalledWith("/print/letter/app1");
+    expect(renderDocumentPdf).toHaveBeenLastCalledWith({ kind: "letter", applicationId: "app1" });
     expect(letter.headers.get("content-disposition")).toContain("Ledgerly%20%E2%80%93%20Cover%20letter.pdf");
     expect(prisma.application.findUnique).toHaveBeenLastCalledWith(
       expect.objectContaining({ where: { id: "app1" }, select: expect.objectContaining({ documents: { where: { kind: "COVER_LETTER" }, select: { id: true } } }) }),
@@ -93,7 +93,7 @@ describe("GET /api/pdf", () => {
     const response = await get("?doc=letter&application=app1");
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({ error: "This application has no cover letter." });
-    expect(renderPdf).not.toHaveBeenCalled();
+    expect(renderDocumentPdf).not.toHaveBeenCalled();
   });
 
   it("never prints for an application that isn't there, or an id that isn't one", async () => {
@@ -101,7 +101,7 @@ describe("GET /api/pdf", () => {
     expect((await get("?doc=resume&application=gone")).status).toBe(404);
     expect((await get("?doc=resume&application=..%2Fbase")).status).toBe(404);
     expect((await get("?doc=resume")).status).toBe(404);
-    expect(renderPdf).not.toHaveBeenCalled();
+    expect(renderDocumentPdf).not.toHaveBeenCalled();
   });
 });
 
@@ -111,8 +111,8 @@ describe("POST /api/pdf, then GET /api/pdf/{id}", () => {
     expect(response.status).toBe(200);
     const { url } = (await response.json()) as { url: string };
     expect(url).toMatch(/^\/api\/pdf\/[0-9a-f-]{36}$/);
-    expect(renderPdf).toHaveBeenCalledTimes(1);
-    expect(renderPdf).toHaveBeenCalledWith("/print/resume/app1");
+    expect(renderDocumentPdf).toHaveBeenCalledTimes(1);
+    expect(renderDocumentPdf).toHaveBeenCalledWith({ kind: "resume", applicationId: "app1" });
 
     const download = await getHeld(url);
     expect(download.status).toBe(200);
@@ -120,7 +120,7 @@ describe("POST /api/pdf, then GET /api/pdf/{id}", () => {
     expect(download.headers.get("content-disposition")).toContain("Jane%20Doe%20%E2%80%93%20Ledgerly%20%E2%80%93%20Resume.pdf");
     expect(download.headers.get("cache-control")).toBe("private, no-store");
     expect(new Uint8Array(await download.arrayBuffer())).toEqual(new Uint8Array([37, 80, 68, 70]));
-    expect(renderPdf).toHaveBeenCalledTimes(1);
+    expect(renderDocumentPdf).toHaveBeenCalledTimes(1);
   });
 
   it("answers with the same errors as a direct download", async () => {
@@ -142,6 +142,6 @@ describe("POST /api/pdf, then GET /api/pdf/{id}", () => {
     vi.mocked(getSession).mockResolvedValue(null);
     expect((await post("?doc=base")).status).toBe(401);
     expect((await getHeld("/api/pdf/anything")).status).toBe(401);
-    expect(renderPdf).not.toHaveBeenCalled();
+    expect(renderDocumentPdf).not.toHaveBeenCalled();
   });
 });

@@ -4993,6 +4993,7 @@ __metadata:
     radix-ui: "npm:^1.6.7"
     react: "npm:19.3.0"
     react-dom: "npm:19.3.0"
+    sharp: "npm:^0.35.4"
     tailwindcss: "npm:^4"
     tsx: "npm:^4.23.15"
     typescript: "npm:^5"

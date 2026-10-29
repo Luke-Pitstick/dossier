@@ -21,6 +21,7 @@ import { addDocumentLanguage, updateSettings } from "./actions";
 import { SettingsSectionIntro } from "./settings-screen";
 
 export type DocumentSettings = {
+  resumeRenderer: "html" | "latex";
   paper: PaperSize;
   dateFormat: DateFormat;
   defaultTone: Tone;
@@ -99,6 +100,9 @@ export function DocumentsSection({
     <>
       <SettingsSectionIntro title="Documents">Defaults for every new application. You can still change them per job.</SettingsSectionIntro>
       <Card padding="none" className="grid gap-x-[18px] gap-y-5 px-7 py-[26px] sm:grid-cols-2">
+        <Select label="Resume format" value={settings.resumeRenderer} onChange={(event) => change({ resumeRenderer: event.target.value as "html" | "latex" })}>
+          <option value="html">Dossier themes</option><option value="latex">Luke’s LaTeX</option>
+        </Select>
         <Select label="Paper size" value={settings.paper} onChange={(event) => change({ paper: event.target.value as PaperSize })}>
           {Object.entries(PAPER_SIZES).map(([value, size]) => (
             <option key={value} value={value}>

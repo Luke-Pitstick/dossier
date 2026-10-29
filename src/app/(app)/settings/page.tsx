@@ -112,6 +112,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
         <DocumentsSection
           // Only these fields: the settings also hold the encrypted API key, which never leaves the server.
           initial={{
+            resumeRenderer: settings.resumeRenderer,
             paper: settings.paper,
             dateFormat: settings.dateFormat,
             defaultTone: settings.defaultTone,

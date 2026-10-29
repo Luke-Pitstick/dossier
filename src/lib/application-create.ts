@@ -196,6 +196,7 @@ export async function createApplicationFromDocuments({ reading, documents, match
       }
     } catch (error) {
       logServerError("one-page trimming", error);
+      await prisma.chatMessage.create({ data: { applicationId: created.id, role: "AI", text: "Your draft was saved, but its PDF page limit could not be checked. Review the PDF preview before sending. You can restore the original draft from History if any content was trimmed." } });
     }
   }
   return created.id;

@@ -5,7 +5,7 @@ import { trimmedSchema, unitsSchema, type Trimmed, type Unit } from "@/lib/appli
 import { updateDocuments } from "@/lib/document-units";
 import { saveVersion } from "@/lib/document-versions";
 import { countPdfPages } from "@/lib/pdf/pages";
-import { renderPdf } from "@/lib/pdf/render";
+import { renderDocumentPdf } from "@/lib/pdf/document";
 import { prisma } from "@/lib/prisma";
 import type { ProfileData } from "@/lib/profile";
 import { pagesInWords } from "@/lib/settings";
@@ -83,9 +83,9 @@ export async function fitResumeToPages(
   applicationId: string,
   profile: ProfileData,
   maxPages: number,
-  pages: (path: string) => Promise<number> = async (path) => countPdfPages(await renderPdf(path)),
+  pages: (applicationId: string) => Promise<number> = async (id) => countPdfPages(await renderDocumentPdf({ kind: "resume", applicationId: id })),
 ): Promise<{ trimmed: Trimmed; fits: boolean }> {
-  const fits = async () => (await pages(`/print/resume/${applicationId}`)) <= maxPages;
+  const fits = async () => (await pages(applicationId)) <= maxPages;
   let trimmed: Trimmed = [];
   if (await fits()) return { trimmed, fits: true };
 

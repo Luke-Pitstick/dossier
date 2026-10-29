@@ -10,7 +10,7 @@ import { z } from "zod";
 import { DocumentKind } from "@/generated/prisma/enums";
 import { env } from "@/lib/env";
 import { resolveFileName } from "@/lib/file-name";
-import { renderPdf } from "@/lib/pdf/render";
+import { renderDocumentPdf } from "@/lib/pdf/document";
 import { prisma } from "@/lib/prisma";
 import { loadProfileName } from "@/lib/profile-data";
 import { loadSettings } from "@/lib/settings-data";
@@ -101,7 +101,7 @@ export const zipPdfsJob = defineJob({
     const rendered = await Promise.all(
       documents.map(async ({ application, kind }) => {
         signal.throwIfAborted();
-        const pdf = await renderPdf(`/print/${kind === DocumentKind.RESUME ? "resume" : "letter"}/${application.id}`);
+        const pdf = await renderDocumentPdf({ kind: kind === DocumentKind.RESUME ? "resume" : "letter", applicationId: application.id }, undefined, signal);
         done += 1;
         await step(`Rendered ${done} of ${documents.length}`);
         return { application, kind, pdf };

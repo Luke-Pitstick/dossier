@@ -66,7 +66,7 @@ export function ResumeDocument({ theme, profile, paper, layout, language, render
     ),
     content.skills && (
       <DocumentSection key="skills" title={labels.skills}>
-        {renderUnit({ id: "skills", children: <p>{content.skills}</p> })}
+        {renderUnit({ id: "skills", children: <p><CitationText text={content.skills} /></p> })}
       </DocumentSection>
     ),
     content.languages && (
@@ -79,7 +79,7 @@ export function ResumeDocument({ theme, profile, paper, layout, language, render
   const main = [
     content.summary && (
       <DocumentSection key="summary" title={labels.profile}>
-        {renderUnit({ id: "summary", children: <p className={styles.summary}>{content.summary}</p> })}
+        {renderUnit({ id: "summary", children: <p className={styles.summary}><CitationText text={content.summary} /></p> })}
       </DocumentSection>
     ),
     content.experience.length > 0 && (
@@ -95,7 +95,7 @@ export function ResumeDocument({ theme, profile, paper, layout, language, render
                   {role.bullets.length > 0 && (
                     <ul className={styles.bullets}>
                       {role.bullets.map((bullet, index) => (
-                        <li key={index}>{bullet}</li>
+                        <li key={index}><CitationText text={bullet} /></li>
                       ))}
                     </ul>
                   )}
@@ -132,7 +132,7 @@ export function ResumeDocument({ theme, profile, paper, layout, language, render
                   {project.bullets.length > 0 && (
                     <ul className={styles.bullets}>
                       {project.bullets.map((bullet, index) => (
-                        <li key={index}>{bullet}</li>
+                        <li key={index}><CitationText text={bullet} /></li>
                       ))}
                     </ul>
                   )}
@@ -157,7 +157,7 @@ export function ResumeDocument({ theme, profile, paper, layout, language, render
               id: `education:${entry.id}`,
               className: styles.entry,
               head: <EntryHead title={entry.degree} at={entry.school} dates={entry.dates} timeline={resolved.timeline} />,
-              children: entry.notes && <p className={styles.muted}>{entry.notes}</p>,
+              children: entry.notes && <p className={styles.muted}><CitationText text={entry.notes} /></p>,
             })}
           </Fragment>
         ))}

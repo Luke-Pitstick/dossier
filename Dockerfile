@@ -10,8 +10,32 @@ ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 # Where Playwright keeps Chromium: in the image, not in a user's home or a volume.
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
+# Trusted LaTeX template, compiler and fonts. Runtime never downloads TeX files.
+FROM base AS latex
+ARG TARGETARCH
+RUN apt-get update -qq \
+  && apt-get install -y --no-install-recommends ca-certificates curl libgraphite2-3 fontconfig fonts-noto-core fonts-noto-cjk \
+  && case "$TARGETARCH" in \
+       amd64) archive=x86_64-unknown-linux-gnu; checksum=1a715688baf591e650c8aeb160ae934e181685eecbb38b317de30b269ac5d606 ;; \
+       arm64) archive=aarch64-unknown-linux-musl; checksum=b10954a95404f3ab2328d2fa59a5ebab8e657f893fab096f98be8db7c0c979b8 ;; \
+       *) exit 1 ;; esac \
+  && curl -fL --retry 3 "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.17.0/tectonic-0.17.0-${archive}.tar.gz" -o /tmp/tectonic.tar.gz \
+  && echo "$checksum  /tmp/tectonic.tar.gz" | sha256sum -c - \
+  && tar -xzf /tmp/tectonic.tar.gz -C /usr/local/bin tectonic \
+  && rm /tmp/tectonic.tar.gz \
+  && rm -rf /var/lib/apt/lists/*
+ENV XDG_CACHE_HOME=/opt/tectonic-cache
+COPY src/lib/latex/luke-resume.tex ./src/lib/latex/luke-resume.tex
+COPY docker/warm-latex.mjs ./docker/warm-latex.mjs
+RUN node docker/warm-latex.mjs \
+  && cd /tmp && tectonic --untrusted --keep-logs warm.tex && tectonic --untrusted --keep-logs latin.tex \
+  && ! grep -q 'Missing character:' warm.log \
+  && tectonic --untrusted --only-cached warm.tex \
+  && chown -R node:node /opt/tectonic-cache \
+  && rm -f /tmp/warm.* /tmp/latin.*
+
 # Development image: dependencies are baked in, source is bind-mounted by compose.yml.
-FROM base AS dev
+FROM latex AS dev
 RUN chown node:node /app
 USER node
 COPY --chown=node:node package.json yarn.lock .yarnrc.yml ./
@@ -62,7 +86,7 @@ RUN node_modules/.bin/esbuild scripts/hash-password.ts --bundle --platform=node 
   --outfile=/tools/hash-password.mjs --banner:js='#!/usr/bin/env node' \
   && chmod 755 /tools/hash-password.mjs
 
-FROM base AS production
+FROM latex AS production
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \

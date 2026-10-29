@@ -40,6 +40,21 @@ beforeEach(async () => {
 afterAll(() => prisma().$disconnect());
 
 describe("importExport (E10-6)", () => {
+  it("preserves LaTeX selection and presentation mappings through export and restore", async () => {
+    const skill = await prisma().skill.findFirstOrThrow();
+    const role = await prisma().experience.findFirstOrThrow();
+    const value = JSON.stringify({ github: "https://github.com/example", leadership: [role.id], skillGroups: [{ name: "Tools", skillIds: [skill.id] }], education: {} });
+    await prisma().profileField.create({ data: { key: "resumePresentation", value } });
+    await prisma().setting.create({ data: { key: "resumeRenderer", value: "latex" } });
+    const file = await asFile();
+    await prisma().profileField.delete({ where: { key: "resumePresentation" } });
+    await importExport(prisma(), file);
+    expect((await prisma().profileField.findUniqueOrThrow({ where: { key: "resumePresentation" } })).value).toBe(value);
+    expect((await prisma().setting.findUniqueOrThrow({ where: { key: "resumeRenderer" } })).value).toBe("latex");
+    expect(await prisma().skill.findUnique({ where: { id: skill.id } })).not.toBeNull();
+    expect(await prisma().experience.findUnique({ where: { id: role.id } })).not.toBeNull();
+  });
+
   it("restores everything as it was exported", async () => {
     const file = await asFile();
     const before = await snapshot();

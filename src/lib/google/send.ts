@@ -4,7 +4,7 @@ import { ApplicationStatus, DocumentKind, EmailDirection } from "@/generated/pri
 import { unitsSchema } from "@/lib/application-data";
 import { emailAddresses, emailParts } from "@/lib/application-email";
 import { resolveFileName } from "@/lib/file-name";
-import { renderPdf } from "@/lib/pdf/render";
+import { renderDocumentPdf } from "@/lib/pdf/document";
 import { prisma } from "@/lib/prisma";
 import { loadProfileName } from "@/lib/profile-data";
 import { loadSettings } from "@/lib/settings-data";
@@ -56,7 +56,7 @@ export async function sendApplicationEmail(applicationId: string): Promise<SentA
     attachments.push({
       fileName: resolveFileName(settings.fileNamePattern, { name, company: application.company, role: application.role, doc: kind, date: new Date() }),
       contentType: "application/pdf",
-      data: await renderPdf(`/print/${path}/${applicationId}`),
+      data: await renderDocumentPdf({ kind: path, applicationId }),
     });
   }
 

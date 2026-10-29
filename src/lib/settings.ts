@@ -112,6 +112,7 @@ export const settingsSchema = z.object({
   strict: flag(true),
   /** "Show what changed" (SET-5). */
   showDiff: flag(true),
+  resumeRenderer: z.enum(["html", "latex"]).default("html"),
   paper: z.enum(PaperSize).catch(PaperSize.A4),
   dateFormat: z.enum(DateFormat).catch(DateFormat.DAY_MONTH_YEAR),
   defaultTone: z.enum(Tone).catch(Tone.WARM),

@@ -5,6 +5,7 @@ import { createTestClient, resetDatabase } from "@/test/db";
 
 import { describeTrim, fitResumeToPages, nextCut } from "./page-limit";
 import { countPdfPages } from "./pdf/pages";
+import { pdfWith } from "@/test/resume-files";
 
 const db = vi.hoisted(() => ({ client: undefined as ReturnType<typeof createTestClient> | undefined }));
 vi.mock("@/lib/prisma", async () => {
@@ -12,7 +13,7 @@ vi.mock("@/lib/prisma", async () => {
   db.client = createTestClient();
   return { prisma: db.client };
 });
-vi.mock("@/lib/pdf/render", () => ({ renderPdf: vi.fn() }));
+vi.mock("@/lib/pdf/document", () => ({ renderDocumentPdf: vi.fn() }));
 
 const prisma = () => db.client!;
 const profile = demoProfile();
@@ -70,7 +71,7 @@ describe("fitResumeToPages (E10-10)", () => {
     const { trimmed, fits } = await fitResumeToPages("app-1", profile, 1, pages);
     expect(fits).toBe(true);
     expect(trimmed.map((item) => (item.kind === "unit" ? item.unit.id : item.unitId))).toEqual(["experience:e3"]);
-    expect(pages).toHaveBeenCalledWith("/print/resume/app-1");
+    expect(pages).toHaveBeenCalledWith("app-1");
     const saved = await resume();
     expect((saved.units as { id: string }[]).map((unit) => unit.id)).not.toContain("experience:e3");
     expect(saved.trimmed).toEqual(trimmed);
@@ -98,8 +99,8 @@ describe("fitResumeToPages (E10-10)", () => {
 });
 
 describe("countPdfPages", () => {
-  it("counts page objects, not the page tree", () => {
-    const pdf = new TextEncoder().encode("<< /Type /Pages /Count 2 >> << /Type /Page >> << /Type/Page /Parent 1 0 R >>");
-    expect(countPdfPages(pdf)).toBe(2);
+  it("parses the page tree of a real PDF", async () => {
+    expect(await countPdfPages(pdfWith(["A real page"]))).toBe(1);
+    await expect(countPdfPages(new TextEncoder().encode("not a PDF"))).rejects.toThrow();
   });
 });

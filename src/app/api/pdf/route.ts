@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { DocumentKind } from "@/generated/prisma/enums";
 import { resolveFileName } from "@/lib/file-name";
 import { holdPdf, pdfDownload } from "@/lib/pdf/downloads";
-import { renderPdf } from "@/lib/pdf/render";
+import { renderDocumentPdf } from "@/lib/pdf/document";
 import { prisma } from "@/lib/prisma";
 import { loadProfileName } from "@/lib/profile-data";
 import { loadSettings } from "@/lib/settings-data";
@@ -48,7 +48,7 @@ async function renderRequested(request: NextRequest): Promise<{ pdf: Uint8Array;
 
   if (doc === "base") {
     return {
-      pdf: await renderPdf("/print/base"),
+      pdf: await renderDocumentPdf({ kind: "base" }),
       fileName: resolveFileName(settings.fileNamePattern, { name, doc: DocumentKind.RESUME, date }),
     };
   }
@@ -67,7 +67,7 @@ async function renderRequested(request: NextRequest): Promise<{ pdf: Uint8Array;
   }
 
   return {
-    pdf: await renderPdf(`/print/${doc}/${id}`),
+    pdf: await renderDocumentPdf({ kind: doc, applicationId: id }),
     fileName: resolveFileName(settings.fileNamePattern, { name, company: application.company, role: application.role, doc: TAILORED[doc], date }),
   };
 }
